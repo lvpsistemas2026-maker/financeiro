@@ -52,3 +52,4 @@
 - [x] Migracao 005: documentacao da regra anti-duplicidade (camada de aplicacao)
 - [x] Regra anti-duplicidade em Recebimentos: boleto (NF+parcela), outros (descricao+valor+data)
 - [x] Migracao 006: adiciona numero_nf em recebimentos + documentacao da regra anti-duplicidade
+- [x] Filtro por Numero da NF em Pagamentos e Recebimentos

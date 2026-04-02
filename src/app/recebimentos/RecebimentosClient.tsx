@@ -24,6 +24,7 @@ export default function RecebimentosClient({ recebimentos: initial, lojas, categ
 
   const [filtroLoja, setFiltroLoja] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
+  const [filtroNF, setFiltroNF] = useState('')
   const [filtroInicio, setFiltroInicio] = useState(mes.inicio)
   const [filtroFim, setFiltroFim] = useState(mes.fim)
   const [showModal, setShowModal] = useState(false)
@@ -43,8 +44,9 @@ export default function RecebimentosClient({ recebimentos: initial, lojas, categ
     if (filtroStatus && r.status !== filtroStatus) return false
     if (filtroInicio && r.data_recebimento < filtroInicio) return false
     if (filtroFim && r.data_recebimento > filtroFim) return false
+    if (filtroNF && !(r.numero_nf ?? '').toLowerCase().includes(filtroNF.toLowerCase())) return false
     return true
-  }), [initial, filtroLoja, filtroStatus, filtroInicio, filtroFim])
+  }), [initial, filtroLoja, filtroStatus, filtroInicio, filtroFim, filtroNF])
 
   const totalRecebido = filtrados.filter(r => r.status === 'recebido').reduce((a: number, r: any) => a + Number(r.valor), 0)
   const totalPendente = filtrados.filter(r => r.status === 'pendente').reduce((a: number, r: any) => a + Number(r.valor), 0)
@@ -160,6 +162,15 @@ export default function RecebimentosClient({ recebimentos: initial, lojas, categ
           <Sel value={filtroStatus} onChange={setFiltroStatus} placeholder="Todos os status">{STATUS_OPTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</Sel>
           <input type="date" value={filtroInicio} onChange={e => setFiltroInicio(e.target.value)} className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
           <input type="date" value={filtroFim} onChange={e => setFiltroFim(e.target.value)} className="bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+        </div>
+        <div className="mt-3">
+          <input
+            type="text"
+            value={filtroNF}
+            onChange={e => setFiltroNF(e.target.value)}
+            placeholder="Buscar por Nº NF (ex: 661184-2, NF 646690...)"
+            className="w-full md:w-80 bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground font-mono placeholder:font-sans focus:outline-none focus:ring-1 focus:ring-primary"
+          />
         </div>
       </div>
 
