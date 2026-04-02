@@ -277,10 +277,20 @@ export async function createRecebimento(data: {
 }
 
 export async function updateRecebimento(id: number, data: Partial<{
-  loja_id: number; categoria_id: number; descricao: string; valor: number;
-  data_recebimento: string; status: 'recebido' | 'pendente' | 'cancelado'; forma_recebimento: string; observacao: string
+  loja_id: number; categoria_id: number; descricao: string; numero_nf: string; valor: number;
+  data_recebimento: string; status: 'recebido' | 'pendente' | 'cancelado'; forma_recebimento: string; observacao: string;
+  _ignorar_dup?: boolean;
 }>) {
-  const { error } = await supabaseAdmin.from('recebimentos').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id)
+  const { _ignorar_dup, ...rest } = data as any
+  // Se o status está sendo alterado para 'recebido', registrar o timestamp exato
+  const updateData: any = { ...rest, updated_at: new Date().toISOString() }
+  if (rest.status === 'recebido') {
+    updateData.recebido_em = new Date().toISOString()
+  } else if (rest.status === 'pendente' || rest.status === 'cancelado') {
+    // Se reverteu o status, limpar o recebido_em
+    updateData.recebido_em = null
+  }
+  const { error } = await supabaseAdmin.from('recebimentos').update(updateData).eq('id', id)
   if (error) throw error
   revalidatePath('/recebimentos')
 }

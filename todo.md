@@ -57,3 +57,7 @@
 - [x] Adicionar coluna pago_em (timestamp) na tabela pagamentos no Supabase
 - [x] Exibir data/hora de pagamento no modal Detalhes quando status for Pago
 - [x] Gravar pago_em automaticamente ao marcar pagamento como Pago
+- [x] Adicionar coluna recebido_em (timestamp) na tabela recebimentos no Supabase
+- [x] Renomear coluna DATA para DATA VENCIMENTO em Recebimentos
+- [x] Exibir data/hora de recebimento no modal Detalhes quando status for Recebido
+- [x] Gravar recebido_em automaticamente ao marcar recebimento como Recebido
