@@ -180,7 +180,8 @@ Regras de classificação automática para transações importadas via OFX.
 | 001 | `schema.sql` | 2026-03-31 | Schema inicial completo (todas as tabelas) |
 | 002 | `seed.sql` | 2026-03-31 | Seed v1: 3 lojas + 127 categorias genéricas |
 | 003 | `migration_categorias_v2.sql` | 2026-03-31 | Substitui categorias por 67 hierárquicas do Plano LVP-Atual |
-| 004 | `migration_add_numero_nf.sql` | 2026-04-02 | Adiciona coluna `numero_nf` na tabela `pagamentos` |
+| 004 | `migration_add_numero_nf.sql` | 2026-04-02 | Adiciona coluna `numero_nf VARCHAR(100)` na tabela `pagamentos` |
+| 005 | `migration_005_anti_duplicidade.sql` | 2026-04-02 | Documenta regra anti-duplicidade (camada de aplicação) + COMMENT na tabela `pagamentos` |
 
 > Os scripts de migração estão disponíveis em `supabase/` e também em `docs/migrations/` com documentação adicional.
 

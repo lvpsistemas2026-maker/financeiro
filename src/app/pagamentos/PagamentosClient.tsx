@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle, Eye } from 'lucide-react'
+import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle, Eye, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatDate, getMesAtual } from '@/lib/utils'
 import { createPagamento, updatePagamento, deletePagamento } from '@/actions'
 import type { Loja, Categoria } from '@/types'
@@ -31,6 +31,8 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
   const [showView, setShowView] = useState(false)
   const [viewItem, setViewItem] = useState<any | null>(null)
   const [editando, setEditando] = useState<any | null>(null)
+  const [dupAviso, setDupAviso] = useState<string | null>(null)   // mensagem de duplicidade
+  const [forcarSalvar, setForcarSalvar] = useState(false)          // flag para forçar mesmo duplicado
   const [form, setForm] = useState({
     loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '',
     data_pagamento: new Date().toISOString().split('T')[0],
@@ -50,12 +52,16 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
 
   const openNovo = () => {
     setEditando(null)
+    setDupAviso(null)
+    setForcarSalvar(false)
     setForm({ loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '', data_pagamento: new Date().toISOString().split('T')[0], status: 'pendente', forma_pagamento: '', observacao: '' })
     setShowModal(true)
   }
 
   const openEditar = (p: any) => {
     setEditando(p)
+    setDupAviso(null)
+    setForcarSalvar(false)
     setForm({
       loja_id: String(p.loja_id ?? ''), categoria_id: String(p.categoria_id ?? ''),
       descricao: p.descricao, numero_nf: p.numero_nf ?? '', valor: String(p.valor),
@@ -70,8 +76,20 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
     setShowView(true)
   }
 
-  const handleSalvar = () => {
-    if (!form.descricao || !form.valor || !form.data_pagamento) { toast.error('Preencha os campos obrigatórios'); return }
+  // Limpa aviso de duplicidade quando o usuário altera campos relevantes
+  const handleFormChange = (field: string, value: string) => {
+    setForm(f => ({ ...f, [field]: value }))
+    if (['descricao', 'numero_nf', 'valor', 'data_pagamento', 'forma_pagamento', 'loja_id'].includes(field)) {
+      setDupAviso(null)
+      setForcarSalvar(false)
+    }
+  }
+
+  const handleSalvar = (ignorarDup = false) => {
+    if (!form.descricao || !form.valor || !form.data_pagamento) {
+      toast.error('Preencha os campos obrigatórios')
+      return
+    }
     startTransition(async () => {
       try {
         const data = {
@@ -80,23 +98,49 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
           descricao: form.descricao,
           numero_nf: form.numero_nf || undefined,
           valor: parseFloat(form.valor),
-          data_pagamento: form.data_pagamento, status: form.status as any,
-          forma_pagamento: form.forma_pagamento || undefined, observacao: form.observacao || undefined,
+          data_pagamento: form.data_pagamento,
+          status: form.status as any,
+          forma_pagamento: form.forma_pagamento || undefined,
+          observacao: form.observacao || undefined,
+          _ignorar_dup: ignorarDup,   // flag passada para a action
         }
-        if (editando) { await updatePagamento(editando.id, data); toast.success('Pagamento atualizado!') }
-        else { await createPagamento(data); toast.success('Pagamento criado!') }
-        setShowModal(false); router.refresh()
-      } catch { toast.error('Erro ao salvar pagamento') }
+        if (editando) {
+          await updatePagamento(editando.id, data)
+          toast.success('Pagamento atualizado!')
+        } else {
+          await createPagamento(data as any)
+          toast.success('Pagamento registrado com sucesso!')
+        }
+        setShowModal(false)
+        setDupAviso(null)
+        setForcarSalvar(false)
+        router.refresh()
+      } catch (err: any) {
+        const msg: string = err?.message ?? ''
+        if (msg.startsWith('DUPLICADO:')) {
+          // Exibe aviso inline no modal em vez de fechar
+          setDupAviso(msg.replace('DUPLICADO: ', ''))
+          setForcarSalvar(true)
+        } else {
+          toast.error('Erro ao salvar pagamento', { description: msg })
+        }
+      }
     })
   }
 
   const handleDeletar = (id: number) => {
     if (!confirm('Confirma exclusão?')) return
-    startTransition(async () => { try { await deletePagamento(id); toast.success('Excluído!'); router.refresh() } catch { toast.error('Erro ao excluir') } })
+    startTransition(async () => {
+      try { await deletePagamento(id); toast.success('Excluído!'); router.refresh() }
+      catch { toast.error('Erro ao excluir') }
+    })
   }
 
   const handleMarcarPago = (p: any) => {
-    startTransition(async () => { try { await updatePagamento(p.id, { status: 'pago' }); toast.success('Marcado como pago!'); router.refresh() } catch { toast.error('Erro') } })
+    startTransition(async () => {
+      try { await updatePagamento(p.id, { status: 'pago' }); toast.success('Marcado como pago!'); router.refresh() }
+      catch { toast.error('Erro') }
+    })
   }
 
   return (
@@ -219,17 +263,35 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
               <h2 className="text-lg font-semibold text-foreground">{editando ? 'Editar Pagamento' : 'Novo Pagamento'}</h2>
               <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+
+            {/* Aviso de duplicidade */}
+            {dupAviso && (
+              <div className="mb-4 flex gap-3 items-start p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-amber-400 mb-1">Possível duplicidade detectada</p>
+                  <p className="text-xs text-amber-300/80">{dupAviso}</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">Deseja salvar mesmo assim? (ex: parcela diferente)</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Descrição *</label>
-                <input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Descrição do pagamento"
+                <input value={form.descricao} onChange={e => handleFormChange('descricao', e.target.value)} placeholder="Descrição do pagamento"
                   className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Número da NF</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Número da NF
+                  {form.forma_pagamento === 'Boleto' && (
+                    <span className="ml-2 text-amber-400 font-normal">(recomendado para boletos)</span>
+                  )}
+                </label>
                 <input
                   value={form.numero_nf}
-                  onChange={e => setForm(f => ({ ...f, numero_nf: e.target.value }))}
+                  onChange={e => handleFormChange('numero_nf', e.target.value)}
                   placeholder="Ex: NF 646690-4, 12345/2026..."
                   className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 />
@@ -237,19 +299,19 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Valor *</label>
-                  <input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="0,00"
+                  <input type="number" step="0.01" value={form.valor} onChange={e => handleFormChange('valor', e.target.value)} placeholder="0,00"
                     className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data *</label>
-                  <input type="date" value={form.data_pagamento} onChange={e => setForm(f => ({ ...f, data_pagamento: e.target.value }))}
+                  <input type="date" value={form.data_pagamento} onChange={e => handleFormChange('data_pagamento', e.target.value)}
                     className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Loja</label>
-                  <Sel value={form.loja_id} onChange={v => setForm(f => ({ ...f, loja_id: v }))} placeholder="Selecione">{lojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</Sel>
+                  <Sel value={form.loja_id} onChange={v => handleFormChange('loja_id', v)} placeholder="Selecione">{lojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}</Sel>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Status</label>
@@ -265,7 +327,7 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Forma de Pagamento</label>
-                  <Sel value={form.forma_pagamento} onChange={v => setForm(f => ({ ...f, forma_pagamento: v }))} placeholder="Selecione">{FORMAS.map(f => <option key={f} value={f}>{f}</option>)}</Sel>
+                  <Sel value={form.forma_pagamento} onChange={v => handleFormChange('forma_pagamento', v)} placeholder="Selecione">{FORMAS.map(f => <option key={f} value={f}>{f}</option>)}</Sel>
                 </div>
               </div>
               <div>
@@ -274,11 +336,34 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                   className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
             </div>
+
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">Cancelar</button>
-              <button onClick={handleSalvar} disabled={isPending} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
-                {isPending && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                Cancelar
               </button>
+              {forcarSalvar ? (
+                // Quando há duplicidade detectada: mostra dois botões
+                <>
+                  <button
+                    onClick={() => { setDupAviso(null); setForcarSalvar(false) }}
+                    className="flex-1 px-4 py-2 rounded-lg border border-amber-500/40 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors"
+                  >
+                    Revisar
+                  </button>
+                  <button
+                    onClick={() => handleSalvar(true)}
+                    disabled={isPending}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-black text-sm font-medium hover:bg-amber-400 transition-colors disabled:opacity-50"
+                  >
+                    {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Salvar mesmo assim
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => handleSalvar(false)} disabled={isPending} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {isPending && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+                </button>
+              )}
             </div>
           </div>
         </div>

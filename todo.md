@@ -48,3 +48,5 @@
 - [x] Instalar dependencias npm
 - [x] Iniciar servidor Next.js
 - [x] Criar pasta docs/ com documentacao completa (CHANGELOG, SUPABASE, ARQUITETURA, GUIA_OPERACIONAL, GITHUB_HISTORY, migrations/)
+- [x] Regra anti-duplicidade em Pagamentos: boleto (NF+parcela), outros (descricao+valor+data)
+- [x] Migracao 005: documentacao da regra anti-duplicidade (camada de aplicacao)

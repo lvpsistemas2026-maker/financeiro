@@ -138,9 +138,50 @@ export async function getPagamentos(filtros: FiltrosPagamento = {}) {
 
 export async function createPagamento(data: {
   loja_id?: number; categoria_id?: number; descricao: string; numero_nf?: string; valor: number;
-  data_pagamento: string; status?: 'pago' | 'pendente' | 'cancelado'; forma_pagamento?: string; observacao?: string
+  data_pagamento: string; status?: 'pago' | 'pendente' | 'cancelado'; forma_pagamento?: string; observacao?: string;
+  _ignorar_dup?: boolean
 }) {
-  const { error } = await supabaseAdmin.from('pagamentos').insert(data)
+  // ─── Regra anti-duplicidade ───────────────────────────────────────────────
+  // Boleto COM número de NF: bloqueia se já existe mesmo fornecedor + NF
+  // Boleto SEM número de NF: bloqueia se já existe mesmo fornecedor + valor + data
+  // Outros pagamentos: bloqueia se já existe mesmo fornecedor + valor + data
+  // Se o usuário confirmou explicitamente que quer salvar mesmo com duplicidade, pula a verificação
+  if (!data._ignorar_dup) {
+  const isBoleto = data.forma_pagamento?.toLowerCase() === 'boleto'
+  const nfNormalizada = data.numero_nf?.trim().toUpperCase()
+
+  let dupQuery = supabaseAdmin
+    .from('pagamentos')
+    .select('id, descricao, numero_nf, valor, data_pagamento, forma_pagamento')
+    .ilike('descricao', data.descricao.trim())
+    .neq('status', 'cancelado')
+
+  if (data.loja_id) dupQuery = dupQuery.eq('loja_id', data.loja_id)
+
+  if (isBoleto && nfNormalizada) {
+    // Boleto com NF: chave = fornecedor + NF (ignora data/valor — pode ser parcela diferente)
+    dupQuery = dupQuery.ilike('numero_nf', nfNormalizada)
+  } else {
+    // Sem NF ou não é boleto: chave = fornecedor + valor + data
+    dupQuery = dupQuery
+      .eq('valor', data.valor)
+      .eq('data_pagamento', data.data_pagamento)
+  }
+
+  const { data: existentes } = await dupQuery.limit(1)
+  if (existentes && existentes.length > 0) {
+    const dup = existentes[0]
+    const msg = isBoleto && nfNormalizada
+      ? `Já existe um pagamento com a NF "${nfNormalizada}" para "${dup.descricao}".`
+      : `Já existe um pagamento de R$ ${Number(dup.valor).toFixed(2).replace('.', ',')} para "${dup.descricao}" na data ${dup.data_pagamento}.`
+    throw new Error(`DUPLICADO: ${msg}`)
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  } // fim do bloco de verificação de duplicidade
+
+  // Remove o campo interno antes de inserir
+  const { _ignorar_dup: _, ...dadosLimpos } = data
+  const { error } = await supabaseAdmin.from('pagamentos').insert(dadosLimpos)
   if (error) throw error
   revalidatePath('/pagamentos')
   revalidatePath('/dashboard')
