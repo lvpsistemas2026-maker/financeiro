@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle, Eye } from 'lucide-react'
 import { formatCurrency, formatDate, getMesAtual } from '@/lib/utils'
 import { createPagamento, updatePagamento, deletePagamento } from '@/actions'
 import type { Loja, Categoria } from '@/types'
@@ -28,9 +28,11 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
   const [filtroInicio, setFiltroInicio] = useState(mes.inicio)
   const [filtroFim, setFiltroFim] = useState(mes.fim)
   const [showModal, setShowModal] = useState(false)
+  const [showView, setShowView] = useState(false)
+  const [viewItem, setViewItem] = useState<any | null>(null)
   const [editando, setEditando] = useState<any | null>(null)
   const [form, setForm] = useState({
-    loja_id: '', categoria_id: '', descricao: '', valor: '',
+    loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '',
     data_pagamento: new Date().toISOString().split('T')[0],
     status: 'pendente' as string, forma_pagamento: '', observacao: ''
   })
@@ -48,14 +50,24 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
 
   const openNovo = () => {
     setEditando(null)
-    setForm({ loja_id: '', categoria_id: '', descricao: '', valor: '', data_pagamento: new Date().toISOString().split('T')[0], status: 'pendente', forma_pagamento: '', observacao: '' })
+    setForm({ loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '', data_pagamento: new Date().toISOString().split('T')[0], status: 'pendente', forma_pagamento: '', observacao: '' })
     setShowModal(true)
   }
 
   const openEditar = (p: any) => {
     setEditando(p)
-    setForm({ loja_id: String(p.loja_id ?? ''), categoria_id: String(p.categoria_id ?? ''), descricao: p.descricao, valor: String(p.valor), data_pagamento: p.data_pagamento, status: p.status, forma_pagamento: p.forma_pagamento ?? '', observacao: p.observacao ?? '' })
+    setForm({
+      loja_id: String(p.loja_id ?? ''), categoria_id: String(p.categoria_id ?? ''),
+      descricao: p.descricao, numero_nf: p.numero_nf ?? '', valor: String(p.valor),
+      data_pagamento: p.data_pagamento, status: p.status,
+      forma_pagamento: p.forma_pagamento ?? '', observacao: p.observacao ?? ''
+    })
     setShowModal(true)
+  }
+
+  const openVisualizar = (p: any) => {
+    setViewItem(p)
+    setShowView(true)
   }
 
   const handleSalvar = () => {
@@ -65,7 +77,9 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
         const data = {
           loja_id: form.loja_id ? Number(form.loja_id) : undefined,
           categoria_id: form.categoria_id ? Number(form.categoria_id) : undefined,
-          descricao: form.descricao, valor: parseFloat(form.valor),
+          descricao: form.descricao,
+          numero_nf: form.numero_nf || undefined,
+          valor: parseFloat(form.valor),
           data_pagamento: form.data_pagamento, status: form.status as any,
           forma_pagamento: form.forma_pagamento || undefined, observacao: form.observacao || undefined,
         }
@@ -121,20 +135,21 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                {['DATA', 'DESCRIÇÃO', 'LOJA', 'CATEGORIA', 'FORMA', 'VALOR', 'STATUS', 'AÇÕES'].map(h => (
+                {['DATA', 'DESCRIÇÃO', 'Nº NF', 'LOJA', 'CATEGORIA', 'FORMA', 'VALOR', 'STATUS', 'AÇÕES'].map(h => (
                   <th key={h} className={`px-4 py-3 text-xs font-semibold text-muted-foreground ${h === 'VALOR' ? 'text-right' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                   <TrendingDown className="w-8 h-8 mx-auto mb-2 opacity-30" /><p>Nenhum pagamento encontrado</p>
                 </td></tr>
               ) : filtrados.map((p: any) => (
                 <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{formatDate(p.data_pagamento)}</td>
                   <td className="px-4 py-2.5 text-foreground max-w-xs"><span className="truncate block">{p.descricao}</span></td>
+                  <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap font-mono text-xs">{p.numero_nf ?? '—'}</td>
                   <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{p.loja?.nome ?? '—'}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{p.categoria?.nome ?? '—'}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{p.forma_pagamento ?? '—'}</td>
@@ -144,6 +159,9 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1">
+                      <button onClick={() => openVisualizar(p)} title="Visualizar" className="p-1.5 rounded hover:bg-blue-500/10 text-muted-foreground hover:text-blue-400 transition-colors">
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                       {p.status === 'pendente' && (
                         <button onClick={() => handleMarcarPago(p)} title="Marcar como pago" className="p-1.5 rounded hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-400 transition-colors">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -160,11 +178,43 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal Visualizar */}
+      {showView && viewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowView(false)} />
+          <div className="relative bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-foreground">Detalhes do Pagamento</h2>
+              <button onClick={() => setShowView(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <Row label="Descrição" value={viewItem.descricao} />
+              {viewItem.numero_nf && <Row label="Número da NF" value={viewItem.numero_nf} mono />}
+              <Row label="Valor" value={formatCurrency(Number(viewItem.valor))} highlight />
+              <Row label="Data" value={formatDate(viewItem.data_pagamento)} />
+              <Row label="Loja" value={viewItem.loja?.nome ?? '—'} />
+              <Row label="Categoria" value={viewItem.categoria?.nome ?? '—'} />
+              <Row label="Forma de Pagamento" value={viewItem.forma_pagamento ?? '—'} />
+              <Row label="Status" value={STATUS_OPTS.find(s => s.value === viewItem.status)?.label ?? viewItem.status} />
+              {viewItem.observacao && <Row label="Observação" value={viewItem.observacao} />}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => { setShowView(false); openEditar(viewItem) }} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                <Edit2 className="w-4 h-4" /> Editar
+              </button>
+              <button onClick={() => setShowView(false)} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Criar/Editar */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowModal(false)} />
-          <div className="relative bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <div className="relative bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-foreground">{editando ? 'Editar Pagamento' : 'Novo Pagamento'}</h2>
               <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
@@ -174,6 +224,15 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Descrição *</label>
                 <input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Descrição do pagamento"
                   className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Número da NF</label>
+                <input
+                  value={form.numero_nf}
+                  onChange={e => setForm(f => ({ ...f, numero_nf: e.target.value }))}
+                  placeholder="Ex: NF 646690-4, 12345/2026..."
+                  className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -200,7 +259,9 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Categoria</label>
-                  <Sel value={form.categoria_id} onChange={v => setForm(f => ({ ...f, categoria_id: v }))} placeholder="Sem categoria">{categorias.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} - ` : ''}{c.nome}</option>)}</Sel>
+                  <Sel value={form.categoria_id} onChange={v => setForm(f => ({ ...f, categoria_id: v }))} placeholder="Sem categoria">
+                    {categorias.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} - ${c.nome}` : c.nome}</option>)}
+                  </Sel>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">Forma de Pagamento</label>
@@ -222,6 +283,15 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function Row({ label, value, highlight, mono }: { label: string; value: string; highlight?: boolean; mono?: boolean }) {
+  return (
+    <div className="flex justify-between items-start py-2 border-b border-border/40 last:border-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`text-sm text-right max-w-[60%] break-words ${highlight ? 'font-bold text-primary' : 'text-foreground'} ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   )
 }

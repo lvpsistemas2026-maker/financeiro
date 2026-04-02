@@ -137,7 +137,7 @@ export async function getPagamentos(filtros: FiltrosPagamento = {}) {
 }
 
 export async function createPagamento(data: {
-  loja_id?: number; categoria_id?: number; descricao: string; valor: number;
+  loja_id?: number; categoria_id?: number; descricao: string; numero_nf?: string; valor: number;
   data_pagamento: string; status?: 'pago' | 'pendente' | 'cancelado'; forma_pagamento?: string; observacao?: string
 }) {
   const { error } = await supabaseAdmin.from('pagamentos').insert(data)
@@ -147,7 +147,7 @@ export async function createPagamento(data: {
 }
 
 export async function updatePagamento(id: number, data: Partial<{
-  loja_id: number; categoria_id: number; descricao: string; valor: number;
+  loja_id: number; categoria_id: number; descricao: string; numero_nf: string; valor: number;
   data_pagamento: string; status: 'pago' | 'pendente' | 'cancelado'; forma_pagamento: string; observacao: string
 }>) {
   const { error } = await supabaseAdmin.from('pagamentos').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id)

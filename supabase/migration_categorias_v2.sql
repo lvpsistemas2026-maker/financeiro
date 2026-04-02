@@ -1,19 +1,23 @@
 -- ============================================================
--- SISTEMA FINANCEIRO LVP — Seed de Dados Iniciais
--- Baseado no Plano LVP - Atual (versão revisada)
+-- MIGRAÇÃO: Atualização das Categorias para o Plano LVP - Atual
+-- ============================================================
+-- ATENÇÃO: Este script apaga TODAS as categorias existentes e
+-- recarrega com a nova estrutura do Plano LVP - Atual.
+-- Execute este script no SQL Editor do Supabase.
 -- ============================================================
 
--- ─── LOJAS ───────────────────────────────────────────────────
-INSERT INTO lojas (nome, ativa) VALUES
-  ('Muzambinho',      true),
-  ('Guaxupé',         true),
-  ('Poços de Caldas', true)
-ON CONFLICT DO NOTHING;
+-- Passo 1: Remove vínculos de categorias nas transações existentes
+-- (mantém as transações, apenas desvincula a categoria)
+UPDATE transacoes SET categoria_id = NULL WHERE categoria_id IS NOT NULL;
+UPDATE pagamentos SET categoria_id = NULL WHERE categoria_id IS NOT NULL;
+UPDATE recebimentos SET categoria_id = NULL WHERE categoria_id IS NOT NULL;
+UPDATE pagamentos_futuros SET categoria_id = NULL WHERE categoria_id IS NOT NULL;
+UPDATE recebimentos_futuros SET categoria_id = NULL WHERE categoria_id IS NOT NULL;
 
--- ─── CATEGORIAS ──────────────────────────────────────────────
--- Limpa categorias existentes para recarregar com o novo plano
-TRUNCATE TABLE categorias RESTART IDENTITY CASCADE;
+-- Passo 2: Limpa a tabela de categorias
+TRUNCATE TABLE categorias RESTART IDENTITY;
 
+-- Passo 3: Insere as novas categorias do Plano LVP - Atual
 INSERT INTO categorias (codigo, nome, tipo, grupo, palavras_chave, ativa) VALUES
 
 -- ══════════════════════════════════════════════════════════════
@@ -132,3 +136,6 @@ INSERT INTO categorias (codigo, nome, tipo, grupo, palavras_chave, ativa) VALUES
 -- 3.3) Reposição de Estoque (Compras)
 ('3.3.1',  'Compra de Aparelhos e Acessórios',  'saida',   '3.3 Reposição de Estoque',         'compra aparelho, estoque aparelho, nf compra, nota fiscal compra',    true),
 ('3.3.2',  'Compra de Peças e Próteses',        'saida',   '3.3 Reposição de Estoque',         'compra peça, compra prótese, reposição peça, estoque prótese',        true);
+
+-- Confirmação
+SELECT COUNT(*) as total_categorias FROM categorias;

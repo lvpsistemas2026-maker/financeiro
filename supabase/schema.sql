@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
   valor           DECIMAL(15,2) NOT NULL,
   data_pagamento  DATE NOT NULL,
   status          VARCHAR(20) NOT NULL DEFAULT 'pago' CHECK (status IN ('pago', 'pendente', 'cancelado')),
+  numero_nf       VARCHAR(100),
   forma_pagamento VARCHAR(30),
   observacao      TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
