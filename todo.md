@@ -67,3 +67,7 @@
 - [x] Exibir confirmado_em no modal de detalhes de Recebimentos Futuros
 - [x] Gravar confirmado_em ao marcar Pagamento Futuro como pago
 - [x] Gravar confirmado_em ao marcar Recebimento Futuro como recebido
+- [x] Secao Datas Futuras no formulario de Pagamentos (novo e edicao)
+- [x] Secao Datas Futuras no formulario de Recebimentos (novo e edicao)
+- [x] Server Action createPagamento: criar registros em pagamentos_futuros ao salvar com datas futuras
+- [x] Server Action createRecebimento: criar registros em recebimentos_futuros ao salvar com datas futuras

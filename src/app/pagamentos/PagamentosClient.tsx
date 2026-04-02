@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle, Eye, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, TrendingDown, CheckCircle, Eye, AlertTriangle, CalendarPlus, Repeat } from 'lucide-react'
 import { formatCurrency, formatDate, getMesAtual } from '@/lib/utils'
 import { createPagamento, updatePagamento, deletePagamento } from '@/actions'
 import type { Loja, Categoria } from '@/types'
@@ -32,13 +32,18 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
   const [showView, setShowView] = useState(false)
   const [viewItem, setViewItem] = useState<any | null>(null)
   const [editando, setEditando] = useState<any | null>(null)
-  const [dupAviso, setDupAviso] = useState<string | null>(null)   // mensagem de duplicidade
-  const [forcarSalvar, setForcarSalvar] = useState(false)          // flag para forçar mesmo duplicado
+  const [dupAviso, setDupAviso] = useState<string | null>(null)
+  const [forcarSalvar, setForcarSalvar] = useState(false)
   const [form, setForm] = useState({
     loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '',
     data_pagamento: new Date().toISOString().split('T')[0],
     status: 'pendente' as string, forma_pagamento: '', observacao: ''
   })
+  // Datas Futuras
+  const [gerarFuturos, setGerarFuturos] = useState(false)
+  const [datasFuturas, setDatasFuturas] = useState<string[]>([])
+  const [novaDataFutura, setNovaDataFutura] = useState('')
+  const [qtdMeses, setQtdMeses] = useState('3')
 
   const filtrados = useMemo(() => initial.filter(p => {
     if (filtroLoja && String(p.loja_id) !== filtroLoja) return false
@@ -56,6 +61,10 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
     setEditando(null)
     setDupAviso(null)
     setForcarSalvar(false)
+    setGerarFuturos(false)
+    setDatasFuturas([])
+    setNovaDataFutura('')
+    setQtdMeses('3')
     setForm({ loja_id: '', categoria_id: '', descricao: '', numero_nf: '', valor: '', data_pagamento: new Date().toISOString().split('T')[0], status: 'pendente', forma_pagamento: '', observacao: '' })
     setShowModal(true)
   }
@@ -64,6 +73,10 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
     setEditando(p)
     setDupAviso(null)
     setForcarSalvar(false)
+    setGerarFuturos(false)
+    setDatasFuturas([])
+    setNovaDataFutura('')
+    setQtdMeses('3')
     setForm({
       loja_id: String(p.loja_id ?? ''), categoria_id: String(p.categoria_id ?? ''),
       descricao: p.descricao, numero_nf: p.numero_nf ?? '', valor: String(p.valor),
@@ -72,6 +85,35 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
     })
     setShowModal(true)
   }
+
+  // Gera datas futuras mensalmente a partir da data de vencimento
+  const gerarDatasMensais = () => {
+    const base = form.data_pagamento
+    if (!base) { toast.error('Informe a Data de Vencimento primeiro'); return }
+    const n = parseInt(qtdMeses) || 3
+    const datas: string[] = []
+    const [ano, mes, dia] = base.split('-').map(Number)
+    for (let i = 1; i <= n; i++) {
+      const d = new Date(ano, mes - 1 + i, dia)
+      // Ajusta para o último dia do mês se o dia não existir
+      if (d.getMonth() !== (mes - 1 + i) % 12) d.setDate(0)
+      datas.push(d.toISOString().split('T')[0])
+    }
+    setDatasFuturas(prev => {
+      const todas = [...new Set([...prev, ...datas])].sort()
+      return todas
+    })
+    toast.success(`${n} datas mensais geradas!`)
+  }
+
+  const adicionarDataManual = () => {
+    if (!novaDataFutura) return
+    if (datasFuturas.includes(novaDataFutura)) { toast.error('Data já adicionada'); return }
+    setDatasFuturas(prev => [...prev, novaDataFutura].sort())
+    setNovaDataFutura('')
+  }
+
+  const removerDataFutura = (d: string) => setDatasFuturas(prev => prev.filter(x => x !== d))
 
   const openVisualizar = (p: any) => {
     setViewItem(p)
@@ -104,18 +146,24 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
           status: form.status as any,
           forma_pagamento: form.forma_pagamento || undefined,
           observacao: form.observacao || undefined,
-          _ignorar_dup: ignorarDup,   // flag passada para a action
+          _ignorar_dup: ignorarDup,
+          // Datas futuras para criar em pagamentos_futuros
+          _datas_futuras: gerarFuturos && datasFuturas.length > 0 ? datasFuturas : undefined,
         }
         if (editando) {
           await updatePagamento(editando.id, data)
-          toast.success('Pagamento atualizado!')
+          const futurosMsg = gerarFuturos && datasFuturas.length > 0 ? ` + ${datasFuturas.length} futuros criados` : ''
+          toast.success(`Pagamento atualizado!${futurosMsg}`)
         } else {
           await createPagamento(data as any)
-          toast.success('Pagamento registrado com sucesso!')
+          const futurosMsg = gerarFuturos && datasFuturas.length > 0 ? ` + ${datasFuturas.length} futuros criados` : ''
+          toast.success(`Pagamento registrado com sucesso!${futurosMsg}`)
         }
         setShowModal(false)
         setDupAviso(null)
         setForcarSalvar(false)
+        setGerarFuturos(false)
+        setDatasFuturas([])
         router.refresh()
       } catch (err: any) {
         const msg: string = err?.message ?? ''
@@ -348,6 +396,66 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Observação</label>
                 <input value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} placeholder="Opcional"
                   className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+
+              {/* Seção Datas Futuras */}
+              <div className="border border-border/60 rounded-lg p-3 bg-secondary/20">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={gerarFuturos} onChange={e => setGerarFuturos(e.target.checked)}
+                    className="w-4 h-4 rounded accent-primary" />
+                  <CalendarPlus className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Gerar Datas Futuras (Pagamentos Futuros)</span>
+                </label>
+
+                {gerarFuturos && (
+                  <div className="mt-3 space-y-3">
+                    {/* Geração automática mensal */}
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs text-muted-foreground mb-1">Gerar mensalmente por</label>
+                        <div className="flex items-center gap-2">
+                          <input type="number" min="1" max="24" value={qtdMeses} onChange={e => setQtdMeses(e.target.value)}
+                            className="w-20 bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                          <span className="text-xs text-muted-foreground">meses</span>
+                          <button type="button" onClick={gerarDatasMensais}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 text-primary text-xs font-medium hover:bg-primary/30 transition-colors">
+                            <Repeat className="w-3.5 h-3.5" /> Gerar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Adicionar data manual */}
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Ou adicionar data específica</label>
+                      <div className="flex gap-2">
+                        <input type="date" value={novaDataFutura} onChange={e => setNovaDataFutura(e.target.value)}
+                          className="flex-1 bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                        <button type="button" onClick={adicionarDataManual}
+                          className="px-3 py-2 rounded-lg bg-secondary border border-border text-sm text-foreground hover:bg-secondary/80 transition-colors">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista de datas futuras */}
+                    {datasFuturas.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1.5">{datasFuturas.length} data(s) selecionada(s):</p>
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {datasFuturas.map(d => (
+                            <div key={d} className="flex items-center justify-between bg-input rounded px-2.5 py-1.5">
+                              <span className="text-xs text-foreground font-mono">{new Date(d + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                              <button type="button" onClick={() => removerDataFutura(d)} className="text-muted-foreground hover:text-red-400 transition-colors">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

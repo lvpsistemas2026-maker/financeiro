@@ -139,7 +139,7 @@ export async function getPagamentos(filtros: FiltrosPagamento = {}) {
 export async function createPagamento(data: {
   loja_id?: number; categoria_id?: number; descricao: string; numero_nf?: string; valor: number;
   data_pagamento: string; status?: 'pago' | 'pendente' | 'cancelado'; forma_pagamento?: string; observacao?: string;
-  _ignorar_dup?: boolean
+  _ignorar_dup?: boolean; _datas_futuras?: string[]
 }) {
   // ─── Regra anti-duplicidade ───────────────────────────────────────────────
   // Boleto COM número de NF: bloqueia se já existe mesmo fornecedor + NF
@@ -179,10 +179,29 @@ export async function createPagamento(data: {
   // ─────────────────────────────────────────────────────────────────────────
   } // fim do bloco de verificação de duplicidade
 
-  // Remove o campo interno antes de inserir
-  const { _ignorar_dup: _, ...dadosLimpos } = data
+  // Remove campos internos antes de inserir
+  const { _ignorar_dup: _a, _datas_futuras: datasFuturas, ...dadosLimpos } = data as any
   const { error } = await supabaseAdmin.from('pagamentos').insert(dadosLimpos)
   if (error) throw error
+
+  // Criar registros em pagamentos_futuros para cada data futura informada
+  if (datasFuturas && datasFuturas.length > 0) {
+    const futuros = datasFuturas.map((dt: string) => ({
+      loja_id: dadosLimpos.loja_id,
+      categoria_id: dadosLimpos.categoria_id,
+      descricao: dadosLimpos.descricao,
+      numero_nf: dadosLimpos.numero_nf,
+      valor: dadosLimpos.valor,
+      data_vencimento: dt,
+      status: 'pendente',
+      forma_pagamento: dadosLimpos.forma_pagamento,
+      observacao: dadosLimpos.observacao,
+    }))
+    const { error: errFut } = await supabaseAdmin.from('pagamentos_futuros').insert(futuros)
+    if (errFut) console.error('Erro ao criar pagamentos futuros:', errFut)
+    revalidatePath('/pagamentos-futuros')
+  }
+
   revalidatePath('/pagamentos')
   revalidatePath('/dashboard')
 }
@@ -233,7 +252,7 @@ export async function createRecebimento(data: {
   loja_id?: number; categoria_id?: number; descricao: string; valor: number;
   data_recebimento: string; status?: 'recebido' | 'pendente' | 'cancelado';
   forma_recebimento?: string; observacao?: string; numero_nf?: string;
-  _ignorar_dup?: boolean
+  _ignorar_dup?: boolean; _datas_futuras?: string[]
 }) {
   // ─── Regra anti-duplicidade ───────────────────────────────────────────────
   // Boleto COM Nº NF: bloqueia se já existe mesmo cliente + NF + loja
@@ -269,9 +288,28 @@ export async function createRecebimento(data: {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  const { _ignorar_dup: _, ...dadosLimpos } = data
+  const { _ignorar_dup: _a, _datas_futuras: datasFuturas, ...dadosLimpos } = data as any
   const { error } = await supabaseAdmin.from('recebimentos').insert(dadosLimpos)
   if (error) throw error
+
+  // Criar registros em recebimentos_futuros para cada data futura informada
+  if (datasFuturas && datasFuturas.length > 0) {
+    const futuros = datasFuturas.map((dt: string) => ({
+      loja_id: dadosLimpos.loja_id,
+      categoria_id: dadosLimpos.categoria_id,
+      descricao: dadosLimpos.descricao,
+      numero_nf: dadosLimpos.numero_nf,
+      valor: dadosLimpos.valor,
+      data_vencimento: dt,
+      status: 'pendente',
+      forma_recebimento: dadosLimpos.forma_recebimento,
+      observacao: dadosLimpos.observacao,
+    }))
+    const { error: errFut } = await supabaseAdmin.from('recebimentos_futuros').insert(futuros)
+    if (errFut) console.error('Erro ao criar recebimentos futuros:', errFut)
+    revalidatePath('/recebimentos-futuros')
+  }
+
   revalidatePath('/recebimentos')
   revalidatePath('/dashboard')
 }
