@@ -182,6 +182,7 @@ Regras de classificação automática para transações importadas via OFX.
 | 003 | `migration_categorias_v2.sql` | 2026-03-31 | Substitui categorias por 67 hierárquicas do Plano LVP-Atual |
 | 004 | `migration_add_numero_nf.sql` | 2026-04-02 | Adiciona coluna `numero_nf VARCHAR(100)` na tabela `pagamentos` |
 | 005 | `migration_005_anti_duplicidade.sql` | 2026-04-02 | Documenta regra anti-duplicidade (camada de aplicação) + COMMENT na tabela `pagamentos` |
+| 006 | `migration_006_anti_duplicidade_recebimentos.sql` | 2026-04-02 | Adiciona `numero_nf` em `recebimentos` + regra anti-duplicidade (camada de aplicação) |
 
 > Os scripts de migração estão disponíveis em `supabase/` e também em `docs/migrations/` com documentação adicional.
 

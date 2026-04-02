@@ -221,9 +221,46 @@ export async function getRecebimentos(filtros: FiltrosRecebimento = {}) {
 
 export async function createRecebimento(data: {
   loja_id?: number; categoria_id?: number; descricao: string; valor: number;
-  data_recebimento: string; status?: 'recebido' | 'pendente' | 'cancelado'; forma_recebimento?: string; observacao?: string
+  data_recebimento: string; status?: 'recebido' | 'pendente' | 'cancelado';
+  forma_recebimento?: string; observacao?: string; numero_nf?: string;
+  _ignorar_dup?: boolean
 }) {
-  const { error } = await supabaseAdmin.from('recebimentos').insert(data)
+  // ─── Regra anti-duplicidade ───────────────────────────────────────────────
+  // Boleto COM Nº NF: bloqueia se já existe mesmo cliente + NF + loja
+  // Boleto SEM Nº NF ou outros: bloqueia se já existe mesmo cliente + valor + data
+  if (!data._ignorar_dup) {
+    const isBoleto = data.forma_recebimento?.toLowerCase() === 'boleto'
+    const nfNormalizada = data.numero_nf?.trim().toUpperCase()
+
+    let dupQuery = supabaseAdmin
+      .from('recebimentos')
+      .select('id, descricao, numero_nf, valor, data_recebimento, forma_recebimento')
+      .ilike('descricao', data.descricao.trim())
+      .neq('status', 'cancelado')
+
+    if (data.loja_id) dupQuery = dupQuery.eq('loja_id', data.loja_id)
+
+    if (isBoleto && nfNormalizada) {
+      dupQuery = dupQuery.ilike('numero_nf', nfNormalizada)
+    } else {
+      dupQuery = dupQuery
+        .eq('valor', data.valor)
+        .eq('data_recebimento', data.data_recebimento)
+    }
+
+    const { data: existentes } = await dupQuery.limit(1)
+    if (existentes && existentes.length > 0) {
+      const dup = existentes[0]
+      const msg = isBoleto && nfNormalizada
+        ? `Já existe um recebimento com a NF "${nfNormalizada}" para "${dup.descricao}".`
+        : `Já existe um recebimento de R$ ${Number(dup.valor).toFixed(2).replace('.', ',')} para "${dup.descricao}" na data ${dup.data_recebimento}.`
+      throw new Error(`DUPLICADO: ${msg}`)
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const { _ignorar_dup: _, ...dadosLimpos } = data
+  const { error } = await supabaseAdmin.from('recebimentos').insert(dadosLimpos)
   if (error) throw error
   revalidatePath('/recebimentos')
   revalidatePath('/dashboard')

@@ -50,3 +50,5 @@
 - [x] Criar pasta docs/ com documentacao completa (CHANGELOG, SUPABASE, ARQUITETURA, GUIA_OPERACIONAL, GITHUB_HISTORY, migrations/)
 - [x] Regra anti-duplicidade em Pagamentos: boleto (NF+parcela), outros (descricao+valor+data)
 - [x] Migracao 005: documentacao da regra anti-duplicidade (camada de aplicacao)
+- [x] Regra anti-duplicidade em Recebimentos: boleto (NF+parcela), outros (descricao+valor+data)
+- [x] Migracao 006: adiciona numero_nf em recebimentos + documentacao da regra anti-duplicidade
