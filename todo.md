@@ -44,6 +44,7 @@
 
 ## Configuracao
 - [x] Projeto migrado de React+Vite+tRPC para Next.js 14 + Supabase
-- [ ] Configurar variaveis de ambiente SUPABASE no servidor Manus
-- [ ] Instalar dependencias npm
-- [ ] Iniciar servidor Next.js
+- [x] Configurar variaveis de ambiente SUPABASE no servidor Manus
+- [x] Instalar dependencias npm
+- [x] Iniciar servidor Next.js
+- [x] Criar pasta docs/ com documentacao completa (CHANGELOG, SUPABASE, ARQUITETURA, GUIA_OPERACIONAL, GITHUB_HISTORY, migrations/)
