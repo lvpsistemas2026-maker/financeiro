@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Cinza escuro estilo Manus (~#252525) */
+    --background: 0 0% 15%;
+    --foreground: 210 20% 94%;
+    --card: 0 0% 18%;
+    --card-foreground: 210 20% 94%;
+    --popover: 0 0% 18%;
+    --popover-foreground: 210 20% 94%;
+    --primary: 43 60% 55%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 210 10% 85%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 210 10% 58%;
+    --accent: 43 60% 55%;
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 26%;
+    --input: 0 0% 20%;
+    --ring: 43 60% 55%;
+    --sidebar: 0 0% 17%;
+    --sidebar-foreground: 210 20% 94%;
+    --sidebar-border: 0 0% 24%;
+    --sidebar-accent: 0 0% 22%;
+    --sidebar-accent-foreground: 210 20% 94%;
+    --radius: 0.6rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; font-family: 'Inter', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--background)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+}
+
+@layer utilities {
+  .animate-slide-in { animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .badge-pago { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20; }
+  .badge-pendente { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20; }
+  .badge-vencido { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/20; }
+  .badge-cancelado { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-zinc-500/15 text-zinc-400 border border-zinc-500/20; }
+  .badge-recebido { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20; }
+  .badge-credito { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-400; }
+  .badge-debito { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-red-500/15 text-red-400; }
+  .text-gold { color: #C9A84C; }
+  .bg-gold { background-color: #C9A84C; }
+  .border-gold { border-color: #C9A84C; }
+}
