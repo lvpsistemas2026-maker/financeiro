@@ -334,7 +334,14 @@ export async function updatePagamentoFuturo(id: number, data: Partial<{
   data_vencimento: string; status: 'pendente' | 'pago' | 'vencido' | 'cancelado';
   recorrente: boolean; frequencia: 'mensal' | 'quinzenal' | 'semanal' | 'anual'; observacao: string
 }>) {
-  const { error } = await supabaseAdmin.from('pagamentos_futuros').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id)
+  // Registrar confirmado_em ao marcar como pago; limpar ao reverter
+  const updateData: any = { ...data, updated_at: new Date().toISOString() }
+  if ((data as any).status === 'pago') {
+    updateData.confirmado_em = new Date().toISOString()
+  } else if ((data as any).status === 'pendente' || (data as any).status === 'cancelado') {
+    updateData.confirmado_em = null
+  }
+  const { error } = await supabaseAdmin.from('pagamentos_futuros').update(updateData).eq('id', id)
   if (error) throw error
   revalidatePath('/pagamentos-futuros')
   revalidatePath('/dashboard')
@@ -382,7 +389,14 @@ export async function updateRecebimentoFuturo(id: number, data: Partial<{
   tipo_recebimento: 'cartao' | 'boleto' | 'pix' | 'dinheiro' | 'transferencia';
   parcela_atual: number; total_parcelas: number; numero_documento: string; observacao: string
 }>) {
-  const { error } = await supabaseAdmin.from('recebimentos_futuros').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id)
+  // Registrar confirmado_em ao marcar como recebido; limpar ao reverter
+  const updateData: any = { ...data, updated_at: new Date().toISOString() }
+  if ((data as any).status === 'recebido') {
+    updateData.confirmado_em = new Date().toISOString()
+  } else if ((data as any).status === 'pendente' || (data as any).status === 'cancelado') {
+    updateData.confirmado_em = null
+  }
+  const { error } = await supabaseAdmin.from('recebimentos_futuros').update(updateData).eq('id', id)
   if (error) throw error
   revalidatePath('/recebimentos-futuros')
   revalidatePath('/dashboard')

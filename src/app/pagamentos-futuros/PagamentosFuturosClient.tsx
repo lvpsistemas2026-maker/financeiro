@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, CalendarClock, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, CalendarClock, CheckCircle, AlertTriangle, RefreshCw, Eye } from 'lucide-react'
 import { formatCurrency, formatDate, isVencido, diasParaVencer } from '@/lib/utils'
 import { createPagamentoFuturo, updatePagamentoFuturo, deletePagamentoFuturo } from '@/actions'
 import type { Loja, Categoria } from '@/types'
@@ -30,6 +30,8 @@ export default function PagamentosFuturosClient({ pagamentos: initial, lojas, ca
   const [filtroLoja, setFiltroLoja] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('pendente')
   const [showModal, setShowModal] = useState(false)
+  const [showView, setShowView] = useState(false)
+  const [viewItem, setViewItem] = useState<any | null>(null)
   const [editando, setEditando] = useState<any | null>(null)
   const [form, setForm] = useState({
     loja_id: '', categoria_id: '', descricao: '', valor: '',
@@ -85,6 +87,8 @@ export default function PagamentosFuturosClient({ pagamentos: initial, lojas, ca
   const handleMarcarPago = (p: any) => {
     startTransition(async () => { try { await updatePagamentoFuturo(p.id, { status: 'pago' }); toast.success('Marcado como pago!'); router.refresh() } catch { toast.error('Erro') } })
   }
+
+  const openVisualizar = (p: any) => { setViewItem(p); setShowView(true) }
 
   const getStatusBadge = (p: any) => {
     if (p.status === 'pago') return <span className="badge-pago">Pago</span>
@@ -163,6 +167,9 @@ export default function PagamentosFuturosClient({ pagamentos: initial, lojas, ca
                   <td className="px-4 py-2.5">{getStatusBadge(p)}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1">
+                      <button onClick={() => openVisualizar(p)} title="Visualizar" className="p-1.5 rounded hover:bg-blue-500/10 text-muted-foreground hover:text-blue-400 transition-colors">
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                       {p.status === 'pendente' && (
                         <button onClick={() => handleMarcarPago(p)} title="Marcar como pago" className="p-1.5 rounded hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-400 transition-colors">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -178,6 +185,40 @@ export default function PagamentosFuturosClient({ pagamentos: initial, lojas, ca
           </table>
         </div>
       </div>
+
+      {/* Modal Visualizar */}
+      {showView && viewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowView(false)} />
+          <div className="relative bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-foreground">Detalhes do Pagamento Futuro</h2>
+              <button onClick={() => setShowView(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <Row label="Descrição" value={viewItem.descricao} />
+              <Row label="Valor" value={formatCurrency(Number(viewItem.valor))} highlight />
+              <Row label="Vencimento" value={formatDate(viewItem.data_vencimento)} />
+              {viewItem.status === 'pago' && viewItem.confirmado_em && (
+                <Row label="Confirmado em" value={new Date(viewItem.confirmado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} highlight />
+              )}
+              <Row label="Loja" value={viewItem.loja?.nome ?? '—'} />
+              <Row label="Categoria" value={viewItem.categoria?.nome ?? '—'} />
+              <Row label="Status" value={STATUS_OPTS.find(s => s.value === viewItem.status)?.label ?? viewItem.status} />
+              {viewItem.recorrente && <Row label="Recorrência" value={FREQ_OPTS.find(f => f.value === viewItem.frequencia)?.label ?? viewItem.frequencia} />}
+              {viewItem.observacao && <Row label="Observação" value={viewItem.observacao} />}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => { setShowView(false); openEditar(viewItem) }} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                <Edit2 className="w-4 h-4" /> Editar
+              </button>
+              <button onClick={() => setShowView(false)} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -238,6 +279,15 @@ export default function PagamentosFuturosClient({ pagamentos: initial, lojas, ca
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function Row({ label, value, highlight, mono }: { label: string; value: string; highlight?: boolean; mono?: boolean }) {
+  return (
+    <div className="flex justify-between items-start py-2 border-b border-border/40 last:border-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`text-sm text-right max-w-[60%] break-words ${highlight ? 'font-bold text-primary' : 'text-foreground'} ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   )
 }

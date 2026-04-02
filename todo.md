@@ -61,3 +61,9 @@
 - [x] Renomear coluna DATA para DATA VENCIMENTO em Recebimentos
 - [x] Exibir data/hora de recebimento no modal Detalhes quando status for Recebido
 - [x] Gravar recebido_em automaticamente ao marcar recebimento como Recebido
+- [x] Adicionar coluna confirmado_em (TIMESTAMPTZ) em pagamentos_futuros no Supabase
+- [x] Adicionar coluna confirmado_em (TIMESTAMPTZ) em recebimentos_futuros no Supabase
+- [x] Exibir confirmado_em no modal de detalhes de Pagamentos Futuros
+- [x] Exibir confirmado_em no modal de detalhes de Recebimentos Futuros
+- [x] Gravar confirmado_em ao marcar Pagamento Futuro como pago
+- [x] Gravar confirmado_em ao marcar Recebimento Futuro como recebido

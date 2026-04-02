@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, CalendarCheck, CheckCircle, CreditCard, FileText, Smartphone, DollarSign, ArrowRightLeft } from 'lucide-react'
+import { Plus, Trash2, Edit2, Filter, ChevronDown, X, Loader2, CalendarCheck, CheckCircle, CreditCard, FileText, Smartphone, DollarSign, ArrowRightLeft, Eye } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { createRecebimentoFuturo, updateRecebimentoFuturo, deleteRecebimentoFuturo } from '@/actions'
 import type { Loja, Categoria } from '@/types'
@@ -30,6 +30,8 @@ export default function RecebimentosFuturosClient({ recebimentos: initial, lojas
   const [filtroStatus, setFiltroStatus] = useState('pendente')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [showView, setShowView] = useState(false)
+  const [viewItem, setViewItem] = useState<any | null>(null)
   const [editando, setEditando] = useState<any | null>(null)
   const [form, setForm] = useState({
     loja_id: '', categoria_id: '', descricao: '', valor: '',
@@ -89,6 +91,8 @@ export default function RecebimentosFuturosClient({ recebimentos: initial, lojas
   const handleMarcarRecebido = (r: any) => {
     startTransition(async () => { try { await updateRecebimentoFuturo(r.id, { status: 'recebido' }); toast.success('Marcado como recebido!'); router.refresh() } catch { toast.error('Erro') } })
   }
+
+  const openVisualizar = (r: any) => { setViewItem(r); setShowView(true) }
 
   const getTipoIcon = (tipo: string) => {
     const t = TIPOS.find(t => t.value === tipo)
@@ -158,6 +162,9 @@ export default function RecebimentosFuturosClient({ recebimentos: initial, lojas
                   <td className="px-4 py-2.5"><span className={`badge-${r.status}`}>{STATUS_OPTS.find(s => s.value === r.status)?.label ?? r.status}</span></td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1">
+                      <button onClick={() => openVisualizar(r)} title="Visualizar" className="p-1.5 rounded hover:bg-blue-500/10 text-muted-foreground hover:text-blue-400 transition-colors">
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                       {r.status === 'pendente' && (
                         <button onClick={() => handleMarcarRecebido(r)} title="Marcar como recebido" className="p-1.5 rounded hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-400 transition-colors">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -173,6 +180,41 @@ export default function RecebimentosFuturosClient({ recebimentos: initial, lojas
           </table>
         </div>
       </div>
+
+      {/* Modal Visualizar */}
+      {showView && viewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowView(false)} />
+          <div className="relative bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-foreground">Detalhes do Recebimento Futuro</h2>
+              <button onClick={() => setShowView(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <Row label="Descrição" value={viewItem.descricao} />
+              <Row label="Valor" value={formatCurrency(Number(viewItem.valor))} highlight />
+              <Row label="Data Prevista" value={formatDate(viewItem.data_prevista)} />
+              {viewItem.status === 'recebido' && viewItem.confirmado_em && (
+                <Row label="Confirmado em" value={new Date(viewItem.confirmado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} highlight />
+              )}
+              <Row label="Loja" value={viewItem.loja?.nome ?? '—'} />
+              <Row label="Tipo" value={TIPOS.find(t => t.value === viewItem.tipo_recebimento)?.label ?? viewItem.tipo_recebimento} />
+              {viewItem.total_parcelas > 1 && <Row label="Parcelas" value={`${viewItem.parcela_atual}/${viewItem.total_parcelas}`} />}
+              {viewItem.numero_documento && <Row label="Nº Documento" value={viewItem.numero_documento} mono />}
+              <Row label="Status" value={STATUS_OPTS.find(s => s.value === viewItem.status)?.label ?? viewItem.status} />
+              {viewItem.observacao && <Row label="Observação" value={viewItem.observacao} />}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => { setShowView(false); openEditar(viewItem) }} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                <Edit2 className="w-4 h-4" /> Editar
+              </button>
+              <button onClick={() => setShowView(false)} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -251,6 +293,15 @@ export default function RecebimentosFuturosClient({ recebimentos: initial, lojas
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function Row({ label, value, highlight, mono }: { label: string; value: string; highlight?: boolean; mono?: boolean }) {
+  return (
+    <div className="flex justify-between items-start py-2 border-b border-border/40 last:border-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`text-sm text-right max-w-[60%] break-words ${highlight ? 'font-bold text-primary' : 'text-foreground'} ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   )
 }
