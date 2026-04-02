@@ -190,7 +190,7 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                {['DATA', 'DESCRIÇÃO', 'Nº NF', 'LOJA', 'CATEGORIA', 'FORMA', 'VALOR', 'STATUS', 'AÇÕES'].map(h => (
+                {['DATA VENCIMENTO', 'DESCRIÇÃO', 'Nº NF', 'LOJA', 'CATEGORIA', 'FORMA', 'VALOR', 'STATUS', 'AÇÕES'].map(h => (
                   <th key={h} className={`px-4 py-3 text-xs font-semibold text-muted-foreground ${h === 'VALOR' ? 'text-right' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
@@ -246,7 +246,10 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
               <Row label="Descrição" value={viewItem.descricao} />
               {viewItem.numero_nf && <Row label="Número da NF" value={viewItem.numero_nf} mono />}
               <Row label="Valor" value={formatCurrency(Number(viewItem.valor))} highlight />
-              <Row label="Data" value={formatDate(viewItem.data_pagamento)} />
+              <Row label="Data de Vencimento" value={formatDate(viewItem.data_pagamento)} />
+              {viewItem.status === 'pago' && viewItem.pago_em && (
+                <Row label="Pago em" value={new Date(viewItem.pago_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} highlight />
+              )}
               <Row label="Loja" value={viewItem.loja?.nome ?? '—'} />
               <Row label="Categoria" value={viewItem.categoria?.nome ?? '—'} />
               <Row label="Forma de Pagamento" value={viewItem.forma_pagamento ?? '—'} />
@@ -314,7 +317,7 @@ export default function PagamentosClient({ pagamentos: initial, lojas, categoria
                     className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data *</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data de Vencimento *</label>
                   <input type="date" value={form.data_pagamento} onChange={e => handleFormChange('data_pagamento', e.target.value)}
                     className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>

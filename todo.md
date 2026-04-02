@@ -53,3 +53,7 @@
 - [x] Regra anti-duplicidade em Recebimentos: boleto (NF+parcela), outros (descricao+valor+data)
 - [x] Migracao 006: adiciona numero_nf em recebimentos + documentacao da regra anti-duplicidade
 - [x] Filtro por Numero da NF em Pagamentos e Recebimentos
+- [x] Renomear coluna DATA para DATA VENCIMENTO em Pagamentos (tabela e formulario)
+- [x] Adicionar coluna pago_em (timestamp) na tabela pagamentos no Supabase
+- [x] Exibir data/hora de pagamento no modal Detalhes quando status for Pago
+- [x] Gravar pago_em automaticamente ao marcar pagamento como Pago

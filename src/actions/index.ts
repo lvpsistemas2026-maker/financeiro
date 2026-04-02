@@ -189,9 +189,19 @@ export async function createPagamento(data: {
 
 export async function updatePagamento(id: number, data: Partial<{
   loja_id: number; categoria_id: number; descricao: string; numero_nf: string; valor: number;
-  data_pagamento: string; status: 'pago' | 'pendente' | 'cancelado'; forma_pagamento: string; observacao: string
+  data_pagamento: string; status: 'pago' | 'pendente' | 'cancelado'; forma_pagamento: string; observacao: string;
+  _ignorar_dup?: boolean;
 }>) {
-  const { error } = await supabaseAdmin.from('pagamentos').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id)
+  const { _ignorar_dup, ...rest } = data as any
+  // Se o status está sendo alterado para 'pago', registrar o timestamp exato
+  const updateData: any = { ...rest, updated_at: new Date().toISOString() }
+  if (rest.status === 'pago') {
+    updateData.pago_em = new Date().toISOString()
+  } else if (rest.status === 'pendente' || rest.status === 'cancelado') {
+    // Se reverteu o status, limpar o pago_em
+    updateData.pago_em = null
+  }
+  const { error } = await supabaseAdmin.from('pagamentos').update(updateData).eq('id', id)
   if (error) throw error
   revalidatePath('/pagamentos')
 }
